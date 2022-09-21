@@ -35,13 +35,15 @@ namespace SerraLinhasAereas.WebApi.Controllers
         [HttpPost]
         public IActionResult PostViagem([FromBody] Viagem viagem)
         {
-            if (viagem.IdPassagemDeVolta != 0)
+            if (viagem.TemVolta && viagem.IdPassagemDeVolta != 0)
             {
                 int comparacao = _viagemRepository.CompararPassagens(viagem.IdPassagemDeIda, viagem.IdPassagemDeVolta);
 
                 if (comparacao >= 0)
                     return BadRequest(new Resposta("V01", "A passagem de ida deve ser maior que a passagem de volta"));
             }
+            else
+                viagem.IdPassagemDeVolta = 0;
 
 
             try

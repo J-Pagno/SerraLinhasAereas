@@ -51,7 +51,26 @@ namespace SerraLinhasAereas.Infra.Data.DAO
                 {
                     comando.Connection = conexao;
 
-                    string sql = @"BEGIN
+                    string sql;
+
+                    if (!viagem.TemVolta)
+                    {
+                        sql = @"BEGIN
+	                                if NOT EXISTS 
+                                        ( 
+                                            SELECT 1 FROM VIAGENS 
+		                                    WHERE (ID_PASSAGEM_DE_IDA = @IdPassagemDeIda OR ID_PASSAGEM_DE_VOLTA = @IdPassagemDeVolta)
+                                        )
+	                                BEGIN
+                                        INSERT INTO VIAGENS(CODIGO_DE_RESERVA, DATA_DE_COMPRA, VALOR_TOTAL, CPF_CLIENTE, ID_PASSAGEM_DE_IDA, ID_PASSAGEM_DE_VOLTA, TEM_VOLTA) 
+                                        VALUES(@CodigoDaReserva, @DataDaCompra, @ValorTotal, @CpfCliente, @IdPassagemDeIda, NULL, @TemVolta);
+                                        UPDATE PASSAGENS SET DISPONIVEL = 1 WHERE ID = @IdPassagemDeIda;
+                                    END 
+                                END";
+                    }
+                    else
+                    {
+                        sql = @"BEGIN
 	                                if NOT EXISTS 
                                         ( 
                                             SELECT 1 FROM VIAGENS 
@@ -63,6 +82,7 @@ namespace SerraLinhasAereas.Infra.Data.DAO
                                         UPDATE PASSAGENS SET DISPONIVEL = 1 WHERE ID = @IdPassagemDeIda OR ID = @IdPassagemDeVolta;
                                     END 
                                 END";
+                    }
 
                     comando.CommandText = sql;
 
@@ -105,8 +125,7 @@ namespace SerraLinhasAereas.Infra.Data.DAO
             viagem.ValorTotal = decimal.Parse(leitor["VALOR_TOTAL"].ToString());
             viagem.CpfCliente = long.Parse(leitor["CPF_CLIENTE"].ToString());
             viagem.IdPassagemDeIda = int.Parse(leitor["ID_PASSAGEM_DE_IDA"].ToString());
-            //Essa buceta desse caralho de id de volta vem null e da pau
-            viagem.IdPassagemDeVolta = int.Parse(leitor["ID_PASSAGEM_DE_VOLTA"].ToString()) | 0;
+            viagem.IdPassagemDeVolta = (leitor["ID_PASSAGEM_DE_VOLTA"].ToString() == "") ? 0 : int.Parse(leitor["ID_PASSAGEM_DE_VOLTA"].ToString());
             viagem.TemVolta = bool.Parse(leitor["TEM_VOLTA"].ToString());
             viagem.ResumoDaViagem = SetResumo(new int[] { viagem.IdPassagemDeIda, viagem.IdPassagemDeVolta }, viagem);
 
@@ -168,10 +187,10 @@ namespace SerraLinhasAereas.Infra.Data.DAO
             Passagem passagemIda = GetPassagemPeloId(passagens[0]),
                      passagemVolta = GetPassagemPeloId(passagens[1]);
 
-            if (passagens[1] == 0)
+            if (viagem.TemVolta)
                 return $"Seu voo de {passagemIda.Origem} a {passagemIda.Destino} será dia {passagemIda.DataOrigem.ToShortDateString()} as {passagemIda.DataOrigem.ToShortTimeString()} e seu voo de volta de {passagemVolta.Origem} a {passagemVolta.Destino} será dia {passagemVolta.DataOrigem.ToShortDateString()} as {passagemVolta.DataOrigem.ToShortTimeString()}";
             else
-                return $"Seu voo    de {passagemIda.Origem} a {passagemIda.Destino} será dia {passagemIda.DataOrigem.ToShortDateString()} as {passagemIda.DataOrigem.ToShortTimeString()}";
+                return $"Seu voo de {passagemIda.Origem} a {passagemIda.Destino} será dia {passagemIda.DataOrigem.ToShortDateString()} as {passagemIda.DataOrigem.ToShortTimeString()}";
         }
     }
 }
